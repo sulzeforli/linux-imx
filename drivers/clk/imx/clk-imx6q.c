@@ -1013,6 +1013,9 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 	 */
 	imx_clk_set_parent(clk[IMX6QDL_CLK_CKO2_SEL], clk[IMX6QDL_CLK_OSC]);
 	imx_clk_set_parent(clk[IMX6QDL_CLK_CKO], clk[IMX6QDL_CLK_CKO2]);
+	/*add for test */
+//	clk_set_rate(clk[IMX6QDL_CLK_CKO], 24000000);
+//	imx_clk_prepare_enable(clk[IMX6QDL_CLK_CKO]);
 
 	/* Audio-related clocks configuration */
 	clk_set_parent(clk[IMX6QDL_CLK_SPDIF_SEL], clk[IMX6QDL_CLK_PLL3_PFD3_454M]);
