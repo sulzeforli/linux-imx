@@ -61,9 +61,12 @@
 	sound-wm8960 {
 		compatible = "fsl,imx-audio-wm8960";
 		model = "wm8960-audio";
-		cpu-dai = <&ssi3>;
+		cpu-dai = <&ssi2>;
 		audio-codec = <&codec>;
 		codec-master;
+		/*codec-slave;*/
+		asrc-controller = <&asrc>;
+		/*ssi-controller = <&ssi2>;*/
 		gpr = <&gpr 4 0x100000 0x100000>;
 		audio-routing =
 			"Ext Spk", "SPK_LP",
@@ -73,7 +76,7 @@
 			"LINPUT1", "Main MIC",
 			"LINPUT2", "Main MIC",
 			"Main MIC", "MICB";
-		mux-int-port = <7>;
+		mux-int-port = <2>;
 		mux-ext-port = <3>;
 		status = "okay";
 	};
@@ -293,6 +296,7 @@
 
 	    codec: wm8960@1a {
 		compatible = "wlf,wm8960";
+		pinctrl-0 = <&pinctrl_wm8960>;
 		reg = <0x1a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		clock-names = "mclk";
@@ -338,6 +342,8 @@
 	imx6qdl-sabresd {
 		pinctrl_hog: hoggrp {
 			fsl,pins = <
+				MX6QDL_PAD_NANDF_D0__GPIO2_IO00 0x80000000
+				MX6QDL_PAD_NANDF_D1__GPIO2_IO01 0x80000000
 				MX6QDL_PAD_EIM_OE__GPIO2_IO25              0x8000000
 				MX6QDL_PAD_EIM_CS0__GPIO2_IO23              0x8000000
 				MX6QDL_PAD_EIM_CS1__GPIO2_IO24              0x8000000
@@ -365,6 +371,12 @@
 				MX6QDL_PAD_CSI0_DAT4__AUD3_TXC		0x130b0
 				MX6QDL_PAD_CSI0_DAT5__AUD3_TXD		0x110b0
 				MX6QDL_PAD_CSI0_DAT6__AUD3_TXFS		0x130b0
+				>;
+					};
+
+		pinctrl_wm8960:wm8960grp {
+				fsl,pins = <
+				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x1b0b0
 				>;
 					};
 
@@ -546,6 +558,10 @@
                 	MX6QDL_PAD_SD2_DAT1__SD2_DATA1             0x00017059
                 	MX6QDL_PAD_SD2_DAT2__SD2_DATA2             0x00017059
                 	MX6QDL_PAD_SD2_DAT3__SD2_DATA3             0x00017059
+			MX6QDL_PAD_NANDF_D4__SD2_DATA4		0x17059
+			MX6QDL_PAD_NANDF_D5__SD2_DATA5		0x17059
+			MX6QDL_PAD_NANDF_D6__SD2_DATA6		0x17059
+			MX6QDL_PAD_NANDF_D7__SD2_DATA7		0x17059
                                
 			>;
 					};
@@ -652,11 +668,24 @@
 	status = "okay";
 };
 
+&snvs_rtc {
+	status = "okay";
+	   };
+
+
 &snvs_poweroff {
 	status = "okay";
 };
 
-&ssi3 {
+&ssi2 {
+/*	fsl,mode = "i2s-slave";*/
+	assigned-clocks = <&clks IMX6QDL_CLK_PLL4>,
+			  <&clks IMX6QDL_PLL4_BYPASS>,
+			  <&clks IMX6QDL_CLK_SSI2_SEL>;
+	assigned-clock-parents = <&clks IMX6QDL_CLK_OSC>,
+				 <&clks IMX6QDL_CLK_PLL4>,
+				 <&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>;
+	assigned-clock-rates = <1179648000>, <0>, <0>;
 	status = "okay";
 };
 
@@ -708,8 +737,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc2>;
 	bus-width = <8>;
-	cd-gpios = <&gpio2 2 GPIO_ACTIVE_LOW>;
-	wp-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+	cd-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
+	wp-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
 	no-1-8-v;
 	keep-power-in-suspend;
 	enable-sdio-wakeup;
@@ -720,8 +749,8 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
 	bus-width = <8>;
-	cd-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
-	wp-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>;
+	cd-gpios = <&gpio2 2 GPIO_ACTIVE_LOW>;
+	wp-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
 	no-1-8-v;
 	keep-power-in-suspend;
 	enable-sdio-wakeup;
