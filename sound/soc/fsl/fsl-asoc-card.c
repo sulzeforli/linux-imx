@@ -26,7 +26,7 @@
 
 #include "../codecs/sgtl5000.h"
 #include "../codecs/wm8962.h"
-#include "../codecs/wm8960.h"
+#include "../codecs/wm8960_bak.h"
 
 #define CS427x_SYSCLK_MCLK 0
 

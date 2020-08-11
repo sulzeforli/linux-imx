@@ -25,6 +25,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <sound/wm8960.h>
+
 #include "wm8960.h"
 /* R25 - Power 1 */
 #define WM8960_VMID_MASK 0x180

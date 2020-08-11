@@ -28,8 +28,7 @@
 #include <sound/soc-dapm.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/mfd/syscon.h>
-#include "../codecs/wm8960.h"
-//#include "fsl_sai.h"
+#include "../codecs/wm8960_bak.h"
 #include "imx-audmux.h"
 #include "fsl_ssi.h"
 
@@ -110,7 +109,7 @@ static int hpjack_status_check(void)
 	if (!gpio_is_valid(priv->hp_gpio))
 		return 0;
 
-	hp_status = 0;//gpio_get_value(priv->hp_gpio) ? 1 : 0;
+	hp_status = 1;//gpio_get_value(priv->hp_gpio) ? 1 : 0;
 	printk("AAAAABBBBBhpjack_status_check");
 	buf = kmalloc(32, GFP_ATOMIC);
 	if (!buf) {
@@ -149,7 +148,7 @@ static int micjack_status_check(void)
 	if (!gpio_is_valid(priv->mic_gpio))
 		return 0;
 
-	mic_status = gpio_get_value(priv->mic_gpio) ? 1 : 0;
+	mic_status =1;// gpio_get_value(priv->mic_gpio) ? 1 : 0;
 
 	buf = kmalloc(32, GFP_ATOMIC);
 	if (!buf) {
@@ -333,16 +332,17 @@ static int imx_wm8960_set_bias_level(struct snd_soc_card *card,
 static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 				     struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_pcm_runtime *rtd = substream-> private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct imx_priv *priv = &card_priv;
 	struct device *dev = &priv->pdev->dev;
-	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_card *card = platform_get_drvdata(priv->pdev);
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	unsigned int sample_rate = params_rate(params);
 	snd_pcm_format_t sample_format = params_format(params);
-	unsigned int dai_format, pll_out;
+	u32 dai_format, pll_out;
+	u32 channels=params_channels(params);
 	int ret = 0;
 
 	if (!priv->first_stream) {
@@ -353,6 +353,8 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 		/* We suppose the two substream are using same params */
 		return 0;
 	}
+
+//	data->clk_frequency = clk_get_rate(data->codec_clk);
 
 	if (data->is_codec_master)
 	{
@@ -378,21 +380,35 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (!data->is_codec_master) {
-		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0, 0, 2, params_width(params));
+		ret = snd_soc_dai_set_tdm_slot(cpu_dai, channels == 1?0xfffffffe:0xfffffffc,channels == 1?0xfffffffe:0xfffffffc, 2, params_width(params));
+		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 		if (ret) {
 			dev_err(dev, "failed to set cpu dai tdm slot: %d\n", ret);
 			return ret;
 		}
+	/*	if (sample_format == SNDRV_PCM_FORMAT_S24_LE
+				|| sample_format == SNDRV_PCM_FORMAT_S20_3LE)
+				pll_out = sample_rate * 768;
+			else
+				pll_out = sample_rate * 512;*/
+		pll_out = 24000000;
 
-		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, 0, SND_SOC_CLOCK_OUT);
+		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, SND_SOC_CLOCK_OUT);
+		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
 			return ret;
 		}
 		return 0;
 	} else {
+	/*	if (sample_format == SNDRV_PCM_FORMAT_S24_LE
+						|| sample_format == SNDRV_PCM_FORMAT_S20_3LE)
+						pll_out = sample_rate * 768;
+					else
+						pll_out = sample_rate * 512;*/
+		pll_out = 24000000;
 		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, 0, SND_SOC_CLOCK_IN);
+		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, SND_SOC_CLOCK_IN);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
 			return ret;
@@ -427,7 +443,8 @@ static int imx_hifi_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct imx_priv *priv = &card_priv;
-//	struct device *dev = &priv->pdev->dev;
+	struct device *dev = &priv->pdev->dev;
+	int ret;
 
 	/* We don't need to handle anything if there's no substream running */
 	if (!priv->first_stream)
@@ -444,6 +461,13 @@ static int imx_hifi_hw_free(struct snd_pcm_substream *substream)
 		 */
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			snd_soc_dai_digital_mute(codec_dai, 1, substream->stream);
+
+		ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_MCLK,
+						0, SND_SOC_CLOCK_IN);
+				if (ret < 0) {
+					dev_err(dev, "failed to switch away from FLL: %d\n", ret);
+					return ret;
+				}
 
 	}
 
@@ -467,13 +491,15 @@ static int imx_wm8960_gpio_init(struct snd_soc_card *card)
 
 	priv->codec = codec;
 
-	snd_soc_dapm_enable_pin(snd_soc_codec_get_dapm(priv->codec), "Ext Spk");
-
-/*	if (gpio_is_valid(priv->hp_gpio)) {
+	//snd_soc_dapm_enable_pin(snd_soc_codec_get_dapm(priv->codec), "Ext Spk");
+/*
+	if (gpio_is_valid(priv->hp_gpio)) {
 		imx_hp_jack_gpio.gpio = priv->hp_gpio;
 		imx_hp_jack_gpio.jack_status_check = hpjack_status_check;
 
-		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE, &imx_hp_jack);
+		snd_soc_card_jack_new(card, "Headphone Jack",
+						SND_JACK_HEADPHONE, &imx_hp_jack,
+						imx_hp_jack_pins, ARRAY_SIZE(imx_hp_jack_pins));
 		snd_soc_jack_add_pins(&imx_hp_jack,
 				ARRAY_SIZE(imx_hp_jack_pins), imx_hp_jack_pins);
 		snd_soc_jack_add_gpios(&imx_hp_jack, 1, &imx_hp_jack_gpio);
@@ -483,7 +509,9 @@ static int imx_wm8960_gpio_init(struct snd_soc_card *card)
 		imx_mic_jack_gpio.gpio = priv->mic_gpio;
 		imx_mic_jack_gpio.jack_status_check = micjack_status_check;
 
-		snd_soc_jack_new(codec, "AMIC", SND_JACK_MICROPHONE, &imx_mic_jack);
+		snd_soc_card_jack_new(card, "AMIC",
+						SND_JACK_MICROPHONE, &imx_mic_jack,
+						imx_mic_jack_pins, ARRAY_SIZE(imx_mic_jack_pins));
 		snd_soc_jack_add_pins(&imx_mic_jack,
 				ARRAY_SIZE(imx_mic_jack_pins), imx_mic_jack_pins);
 		snd_soc_jack_add_gpios(&imx_mic_jack, 1, &imx_mic_jack_gpio);
@@ -492,8 +520,7 @@ static int imx_wm8960_gpio_init(struct snd_soc_card *card)
 		 * Permanent set monomix bit if only one microphone
 		 * is present on the board while it needs monomix.
 		 */
-//		snd_soc_update_bits(priv->codec, WM8962_THREED1,
-//				WM8962_ADC_MONOMIX_MASK, WM8962_ADC_MONOMIX);
+//		snd_soc_update_bits(priv->codec, WM8960_MONO,0x40,0);
 //	}
 
 	return 0;
@@ -510,7 +537,7 @@ static ssize_t headphone_show(struct device_driver *dev, char *buf)
 	}
 
 	/* Check if headphone is plugged in */
-	hp_status = 0;//gpio_get_value(priv->hp_gpio) ? 1 : 0;
+	hp_status = 1;//gpio_get_value(priv->hp_gpio) ? 1 : 0;
 
 	if (hp_status != priv->hp_active_low)
 		strcpy(buf, "headphone\n");
@@ -534,7 +561,7 @@ static ssize_t mic_show(struct device_driver *dev, char *buf)
 	}
 
 	/* Check if analog microphone is plugged in */
-	mic_status = gpio_get_value(priv->mic_gpio) ? 1 : 0;
+	mic_status = 1;// gpio_get_value(priv->mic_gpio) ? 1 : 0;
 
 	if (mic_status != priv->mic_active_low)
 		strcpy(buf, "amic\n");
@@ -549,7 +576,7 @@ static DRIVER_ATTR_RO(mic);
 
 static int imx_wm8960_late_probe(struct snd_soc_card *card)
 {
-	struct snd_soc_pcm_runtime *rtd;
+	struct snd_soc_pcm_runtime *rtd ;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct imx_priv *priv = &card_priv;
@@ -557,7 +584,7 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 	struct device *dev = &priv->pdev->dev;
 	int ret=0;
 	//add by lidan
-	return 0;
+//	return 0;
 
 	/*
 	 * codec ADCLRC pin configured as GPIO, DACLRC pin is used as a frame
@@ -567,13 +594,21 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 
 	/* GPIO1 used as headphone detect output */
 	/* Enable headphone jack detect */
-
+/*
 	snd_soc_update_bits(codec, WM8960_ADDCTL4, 7<<4, 3<<4);
 
 	snd_soc_update_bits(codec, WM8960_ADDCTL2, 1<<6, 1<<6);
 	snd_soc_update_bits(codec, WM8960_ADDCTL2, 1<<5, 0<<5);
 	snd_soc_update_bits(codec, WM8960_ADDCTL4, 3<<2, 3<<2);
 	snd_soc_update_bits(codec, WM8960_ADDCTL1, 3, 3);
+*/
+	data->clk_frequency = clk_get_rate(data->codec_clk);
+		rtd = snd_soc_get_pcm_runtime(card, card->dai_link[0].name);
+		codec_dai = rtd->codec_dai;
+		ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_MCLK,
+				data->clk_frequency, SND_SOC_CLOCK_IN);
+		if (ret < 0)
+			dev_err(dev, "failed to set sysclk in %s\n", __func__);
 
 
 	return ret;
@@ -601,17 +636,21 @@ static int be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 static int imx_wm8960_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
-	struct device_node *cpu_np, *codec_np = NULL;
+	struct device_node *cpu_np=NULL, *codec_np = NULL;
 	struct platform_device *cpu_pdev;
 	struct imx_priv *priv = &card_priv;
 	struct i2c_client *codec_dev;
 	struct imx_wm8960_data *data;
+//	struct platform_device *asrc_pdev = NULL;
+//	struct device_node *asrc_np;
 	struct clk *codec_clk = NULL;
 	int int_port, ext_port, tmp_port;
 	int ret;
+//	u32 width;
 
 
 	priv->pdev = pdev;
+	priv->asrc_pdev = NULL;
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data) {
@@ -702,16 +741,22 @@ audmux_bypass:
 		ret = -EINVAL;
 		goto fail;
 	}
-
+/*
+	asrc_np = of_parse_phandle(pdev->dev.of_node, "asrc-controller", 0);
+		if (asrc_np) {
+			asrc_pdev = of_find_device_by_node(asrc_np);
+			priv->asrc_pdev = asrc_pdev;
+		}
+*/
 	priv->first_stream = NULL;
 	priv->second_stream = NULL;
 
-	codec_clk = devm_clk_get(&codec_dev->dev, NULL);
-	if (IS_ERR(codec_clk)) {
-		ret = PTR_ERR(codec_clk);
-		dev_err(&codec_dev->dev, "failed to get codec clk: %d\n", ret);
-		goto fail;
-	}
+	data->codec_clk = clk_get(&codec_dev->dev, NULL);
+		if (IS_ERR(data->codec_clk)) {
+			ret = PTR_ERR(data->codec_clk);
+			dev_err(&codec_dev->dev, "failed to get codec clk: %d\n", ret);
+			goto fail;
+		}
 
 	data->codec_clk = codec_clk;
 	data->clk_frequency = clk_get_rate(codec_clk);
@@ -726,7 +771,7 @@ audmux_bypass:
 
 	data->dai.name = "HiFi";
 	data->dai.stream_name = "HiFi";
-	data->dai.codec_dai_name = "wm8960-hifi";
+	data->dai.codec_dai_name = "wm8960";
 	data->dai.codec_of_node = codec_np;
 	data->dai.cpu_dai_name = dev_name(&cpu_pdev->dev);
 	data->dai.platform_of_node = cpu_np;
@@ -737,6 +782,10 @@ audmux_bypass:
 	else
 		data->dai.dai_fmt |= SND_SOC_DAIFMT_CBS_CFS;
 	data->card.num_links = 1;
+
+
+
+
 	data->card.dev = &pdev->dev;
 	ret = snd_soc_of_parse_card_name(&data->card, "model");
 	if (ret)
@@ -744,7 +793,7 @@ audmux_bypass:
 	ret = snd_soc_of_parse_audio_routing(&data->card, "audio-routing");
 	if (ret)
 		goto fail;
-
+	data->card.owner = THIS_MODULE;
 	data->card.dai_link = &data->dai;
 	data->card.dapm_widgets = imx_wm8960_dapm_widgets;
 	data->card.num_dapm_widgets = ARRAY_SIZE(imx_wm8960_dapm_widgets);
@@ -763,12 +812,14 @@ audmux_bypass:
 		goto fail;
 	}
 
+
+/*
 	priv->snd_card = data->card.snd_card;
 	priv->headphone_kctl = snd_kctl_jack_new("Headphone", 0);
 	ret = snd_ctl_add(data->card.snd_card, priv->headphone_kctl);
 	if (ret)
 		goto fail;
-
+*/
 	imx_wm8960_gpio_init(&data->card);
 
 	if (gpio_is_valid(priv->hp_gpio)) {

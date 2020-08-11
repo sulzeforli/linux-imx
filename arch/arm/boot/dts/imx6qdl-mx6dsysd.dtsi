@@ -59,25 +59,28 @@
 	};
 
 	sound-wm8960 {
-		compatible = "fsl,imx-audio-wm8960";
+		compatible ="fsl,imx6q-sabresd-wm8960", 
+					"fsl,imx-audio-wm8960";
 		model = "wm8960-audio";
 		cpu-dai = <&ssi2>;
 		audio-codec = <&codec>;
 		codec-master;
-		/*codec-slave;*/
 		asrc-controller = <&asrc>;
 		/*ssi-controller = <&ssi2>;*/
 		gpr = <&gpr 4 0x100000 0x100000>;
 		audio-routing =
+		/*	"Headset Jack", "HP_L",
+            "Headset Jack", "HP_R",*/
 			"Ext Spk", "SPK_LP",
 			"Ext Spk", "SPK_LN",
 			"Ext Spk", "SPK_RP",
 			"Ext Spk", "SPK_RN",
 			"LINPUT1", "Main MIC",
-			"LINPUT2", "Main MIC",
-			"Main MIC", "MICB";
+			"LINPUT2", "Main MIC"/*,
+			"Main MIC", "MICB"*/;
 		mux-int-port = <2>;
 		mux-ext-port = <3>;
+	/*	hp-det-gpios = <&gpio1 4 1>; */
 		status = "okay";
 	};
 
@@ -296,10 +299,11 @@
 
 	    codec: wm8960@1a {
 		compatible = "wlf,wm8960";
-		pinctrl-0 = <&pinctrl_wm8960>;
+	/*	pinctrl-0 = <&pinctrl_wm8960>;*/
 		reg = <0x1a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		clock-names = "mclk";
+		amic-mono;
 		wlf,shared-lrclk;
 	};
 	
@@ -344,6 +348,8 @@
 			fsl,pins = <
 				MX6QDL_PAD_NANDF_D0__GPIO2_IO00 0x80000000
 				MX6QDL_PAD_NANDF_D1__GPIO2_IO01 0x80000000
+				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x130b0
+			/*	MX6QDL_PAD_GPIO_4__GPIO1_IO04              0x8000000*/
 				MX6QDL_PAD_EIM_OE__GPIO2_IO25              0x8000000
 				MX6QDL_PAD_EIM_CS0__GPIO2_IO23              0x8000000
 				MX6QDL_PAD_EIM_CS1__GPIO2_IO24              0x8000000
@@ -373,13 +379,13 @@
 				MX6QDL_PAD_CSI0_DAT6__AUD3_TXFS		0x130b0
 				>;
 					};
-
+/*
 		pinctrl_wm8960:wm8960grp {
 				fsl,pins = <
 				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x1b0b0
 				>;
 					};
-
+*/
 		pinctrl_ecspi1: ecspi1grp {
 			fsl,pins = <
 				MX6QDL_PAD_EIM_D16__ECSPI1_SCLK            0x000100B1
@@ -678,14 +684,14 @@
 };
 
 &ssi2 {
-/*	fsl,mode = "i2s-slave";*/
-	assigned-clocks = <&clks IMX6QDL_CLK_PLL4>,
+	fsl,mode = "i2s-slave";
+/*	assigned-clocks = <&clks IMX6QDL_CLK_PLL4>,
 			  <&clks IMX6QDL_PLL4_BYPASS>,
 			  <&clks IMX6QDL_CLK_SSI2_SEL>;
 	assigned-clock-parents = <&clks IMX6QDL_CLK_OSC>,
 				 <&clks IMX6QDL_CLK_PLL4>,
 				 <&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>;
-	assigned-clock-rates = <1179648000>, <0>, <0>;
+	assigned-clock-rates = <1179648000>, <0>, <0>;*/
 	status = "okay";
 };
 
