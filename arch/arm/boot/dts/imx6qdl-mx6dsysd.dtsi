@@ -69,8 +69,8 @@
 		/*ssi-controller = <&ssi2>;*/
 		gpr = <&gpr 4 0x100000 0x100000>;
 		audio-routing =
-		/*	"Headset Jack", "HP_L",
-            "Headset Jack", "HP_R",*/
+			"Headset Jack", "HP_L",
+            "Headset Jack", "HP_R",
 			"Ext Spk", "SPK_LP",
 			"Ext Spk", "SPK_LN",
 			"Ext Spk", "SPK_RP",
@@ -303,7 +303,7 @@
 		reg = <0x1a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		clock-names = "mclk";
-		amic-mono;
+	/*	amic-mono;*/
 		wlf,shared-lrclk;
 	};
 	
