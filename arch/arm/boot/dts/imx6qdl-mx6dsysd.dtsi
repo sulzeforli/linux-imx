@@ -89,7 +89,7 @@
 			     "fsl,imx-audio-hdmi";
 		model = "imx-audio-hdmi";
 		hdmi-controller = <&hdmi_audio>;
-		status = "disabled";
+		/*status = "okay";*/
 	};
 
 	mxcfb1: fb@0 {
@@ -120,7 +120,7 @@
 		default_bpp = <32>;
 		int_clk = <0>;
 		late_init = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	mxcfb4: fb@3 {
@@ -130,7 +130,7 @@
 		default_bpp = <32>;
 		int_clk = <0>;
 		late_init = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	lcd@0 {
@@ -167,7 +167,15 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_ir1>;
 		};
-		
+/*
+	sound-spdif {
+		compatible = "fsl,imx-audio-spdif",
+			   "fsl,imx-sabreauto-spdif";
+		model = "imx-spdif";
+		spdif-controller = <&spdif>;
+		spdif-in;
+	};
+*/		
 	mx6dsysd_gpio {
 					toot-gpio-out = <&gpio5 18 0
 					     			 &gpio5 19 0 
@@ -195,11 +203,20 @@
             linux,default-trigger = "heartbeat";
 			    };
 		};
-								
+
+	v4l2_cap_0 {
+		compatible = "fsl,imx6q-v4l2-capture";
+		ipu_id = <0>;
+		csi_id = <0>;
+		mclk_source = <0>;
+		status = "okay";
+	};
+
 	v4l2_out {
 		compatible = "fsl,mxc_v4l2_output";
 		status = "okay";
 	};
+
 };
 
 &audmux {
@@ -209,6 +226,16 @@
 };
 
 &clks {
+/*	assigned-clocks = <&clks IMX6QDL_PLL4_BYPASS_SRC>,
+			  <&clks IMX6QDL_PLL4_BYPASS>,
+			  <&clks IMX6QDL_CLK_LDB_DI0_SEL>,
+			  <&clks IMX6QDL_CLK_LDB_DI1_SEL>,
+			  <&clks IMX6QDL_CLK_PLL4_POST_DIV>;
+	assigned-clock-parents = <&clks IMX6QDL_CLK_LVDS2_IN>,
+				 <&clks IMX6QDL_PLL4_BYPASS_SRC>,
+				 <&clks IMX6QDL_CLK_PLL2_PFD0_352M>,
+				 <&clks IMX6QDL_CLK_PLL2_PFD0_352M>;
+	assigned-clock-rates = <0>, <0>, <0>, <0>, <24576000>;*/
 };
 
 &ecspi1 {
@@ -278,7 +305,7 @@
 
 &hdmi_core {
 	ipu_id = <0>;
-	disp_id = <0>;
+	disp_id = <1>;
 	status = "okay";
 };
 
@@ -323,12 +350,12 @@
 		reg = <0x51>;
 		work-mode = <1>;/*DCM mode*/
 	};
-/*		
-	hdmi: edid@50 {
+		
+	hdmi_edid: edid@50 {
 		compatible = "fsl,imx6-hdmi-i2c";
 		reg = <0x50>;
 	};
-*/
+
 };
 
 &i2c3 {
@@ -610,6 +637,32 @@
  			MX6QDL_PAD_GPIO_8__GPIO1_IO08  0x80000000
 			>;
 				};
+				
+		pinctrl_epdc_0: epdcgrp-0 {
+                        fsl,pins = <
+                                MX6QDL_PAD_EIM_A16__EPDC_DATA00    0x80000000
+                                MX6QDL_PAD_EIM_DA10__EPDC_DATA01   0x80000000
+                                MX6QDL_PAD_EIM_DA12__EPDC_DATA02   0x80000000
+                                MX6QDL_PAD_EIM_DA11__EPDC_DATA03   0x80000000
+                                MX6QDL_PAD_EIM_LBA__EPDC_DATA04    0x80000000
+                                MX6QDL_PAD_EIM_EB2__EPDC_DATA05    0x80000000
+                                MX6QDL_PAD_EIM_CS0__EPDC_DATA06    0x80000000
+                                MX6QDL_PAD_EIM_RW__EPDC_DATA07     0x80000000
+                                MX6QDL_PAD_EIM_A21__EPDC_GDCLK     0x80000000
+                                MX6QDL_PAD_EIM_A22__EPDC_GDSP      0x80000000
+                                MX6QDL_PAD_EIM_A23__EPDC_GDOE      0x80000000
+                                MX6QDL_PAD_EIM_A24__EPDC_GDRL      0x80000000
+                                MX6QDL_PAD_EIM_D31__EPDC_SDCLK_P   0x80000000
+                                MX6QDL_PAD_EIM_D27__EPDC_SDOE      0x80000000
+                                MX6QDL_PAD_EIM_DA1__EPDC_SDLE      0x80000000
+                                MX6QDL_PAD_EIM_EB1__EPDC_SDSHR     0x80000000
+                                MX6QDL_PAD_EIM_DA2__EPDC_BDR0      0x80000000
+                                MX6QDL_PAD_EIM_DA4__EPDC_SDCE0     0x80000000
+                                MX6QDL_PAD_EIM_DA5__EPDC_SDCE1     0x80000000
+                                MX6QDL_PAD_EIM_DA6__EPDC_SDCE2     0x80000000
+                        >;
+                };
+        
 	};
 
 };
@@ -673,6 +726,17 @@
 	pinctrl-0 = <&pinctrl_pwm4>;
 	status = "okay";
 };
+/*
+&spdif {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_spdif>;
+	assigned-clocks = <&clks IMX6QDL_CLK_SPDIF_SEL>,
+			  <&clks IMX6QDL_CLK_SPDIF_PODF>;
+	assigned-clock-parents = <&clks IMX6QDL_CLK_PLL3_PFD3_454M>;
+	assigned-clock-rates = <0>, <227368421>;
+	status = "okay";
+};
+*/
 
 &snvs_rtc {
 	status = "okay";
@@ -782,5 +846,14 @@
 	pinctrl-0 = <&pinctrl_wdog>;
 	fsl,ext-reset-output;
 	status = "okay";
+};
+
+&epdc {
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_epdc_0>;
+       /* V3P3-supply = <&V3P3_reg>;
+        VCOM-supply = <&VCOM_reg>;
+        DISPLAY-supply = <&DISPLAY_reg>;*/
+        status = "disabled";
 };
 
