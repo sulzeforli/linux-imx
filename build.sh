@@ -3,11 +3,11 @@
 export ARCH=arm
 export CROSS_COMPILE=arm-poky-linux-gnueabi-
 #export CROSS_COMPILE=arm-linux-gnueabihf-
-make distclean
-make imx_mx6dsysd_defconfig
+#make distclean
+#make imx_mx6dsysd_defconfig
 #make imx_v7_defconfig
 #make menuconfig
-make all -j8
-make zImage
-make dtbs
+#make all -j8
+#make zImage
+#make dtbs
 

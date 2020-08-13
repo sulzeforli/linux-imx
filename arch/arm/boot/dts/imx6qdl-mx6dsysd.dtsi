@@ -674,7 +674,7 @@
 	lvds-channel@0 {
 		fsl,data-mapping = "spwg";
 		fsl,data-width = <24>;
-		primary;
+		
 		status = "okay";
 
 		display-timings {
@@ -695,9 +695,9 @@
 
 	lvds-channel@1 {
 		fsl,data-mapping = "spwg";
-		fsl,data-width = <18>;
-		status = "disabled";
-
+		fsl,data-width = <24>;
+		status = "okay";
+		primary;
 		display-timings {
 			native-mode = <&timing1>;
 			timing1: hsd100pxn1 {
@@ -713,6 +713,31 @@
 			};
 		};
 	};
+};
+
+&hdmi {
+		reg = <0x00120000 0x9000>;
+                interrupts = <0 115 0x04>;
+                gpr = <&gpr>;
+                clocks = <&clks 123>, <&clks 124>;
+                clock-names = "iahb", "isfr";
+                ddc-i2c-bus = <&i2c2>;
+
+                port@0 {
+                        reg = <0>;
+
+                        hdmi_mux_0: endpoint {
+                                remote-endpoint = <&ipu1_di0_hdmi>;
+                        };
+                };
+
+                port@1 {
+                        reg = <1>;
+
+                        hdmi_mux_1: endpoint {
+                                remote-endpoint = <&ipu1_di1_hdmi>;
+                        };
+                };
 };
 
 &pwm1 {
