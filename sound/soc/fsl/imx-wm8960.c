@@ -587,16 +587,16 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 #if 1
 	    snd_soc_write(codec,0x0 ,0x13f);
 	    snd_soc_write(codec,0x1 , 0x13f);
-		snd_soc_write(codec,0x2 , 0x165);
-		snd_soc_write(codec,0x3 , 0x165);
+		snd_soc_write(codec,0x2 , 0x379);
+		snd_soc_write(codec,0x3 , 0x379);
 		snd_soc_write(codec, 0x4 , 0x5);
 		snd_soc_write(codec,0x5 , 0x0);
 		snd_soc_write(codec,0x6 ,0x0);
 		snd_soc_write(codec,0x7 , 0x42);
 		snd_soc_write(codec, 0x8 , 0x1c4);
 		snd_soc_write(codec,0x9 , 0x0);
-		snd_soc_write(codec,0xa , 0xd6);
-		snd_soc_write(codec,0xb , 0xd6);
+		snd_soc_write(codec,0xa , 0xd6);//-20dB LDAC
+		snd_soc_write(codec,0xb , 0xd6);//-20dB RDAC
 		snd_soc_write(codec,0x10 , 0x0);
 		snd_soc_write(codec,0x11 , 0x7b);
 		snd_soc_write(codec, 0x12 , 0x100);
@@ -604,17 +604,17 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 		snd_soc_write(codec,0x14 , 0x0);
 		snd_soc_write(codec,0x15 , 0xc3);
 		snd_soc_write(codec,0x16 , 0xc3);
-		snd_soc_write(codec,0x17 , 0x1c0);
+		snd_soc_write(codec,0x17 , 0x1d0);//DAC Mono Mix
 		snd_soc_write(codec,0x18 , 0x0);
-		snd_soc_write(codec,0x19 , 0xfc);
+		snd_soc_write(codec,0x19 , 0xfe);//Master clock enabled,MICBIAS power up
 		snd_soc_write(codec,0x1a , 0x1fb);
 		snd_soc_write(codec,0x1b , 0x0);
 		snd_soc_write(codec,0x1c , 0x8);
 		snd_soc_write(codec,0x1d , 0x0);
-		snd_soc_write(codec,0x20 , 0x108);
-		snd_soc_write(codec,0x21 , 0x108);
-		snd_soc_write(codec,0x22 , 0x100);
-		snd_soc_write(codec,0x25 , 0x100);
+		snd_soc_write(codec,0x20 , 0x108);//LINPUT1 connected to PGA;Connect Left Input PGA to Left Input Boost Mixer
+		snd_soc_write(codec,0x21 , 0x108);//RINPUT1 connected to PGA;Connect Right Input PGA to Right Input Boost Mixer
+		snd_soc_write(codec,0x22 , 0x100);//Left DAC to Left Output Mixer
+		snd_soc_write(codec,0x25 , 0x100);//Right DAC to Right Output Mixer
 		snd_soc_write(codec,0x26 , 0x0);
 		snd_soc_write(codec,0x27 , 0x0);
 		snd_soc_write(codec,0x28 , 0x165);
@@ -626,8 +626,8 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 		snd_soc_write(codec,0x2e , 0x50);
 		snd_soc_write(codec,0x2f , 0x3c);
 		snd_soc_write(codec,0x30 , 0x2);
-		snd_soc_write(codec,0x31 , 0xf7);
-		snd_soc_write(codec,0x33 , 0x9b);
+		snd_soc_write(codec,0x31 , 0xf7);//Enable Class D Speaker Outputs,11 = Left and right speakers enabled
+		snd_soc_write(codec,0x33 , 0x83);//DC GAIN 000,AC GAIN 011
 		snd_soc_write(codec,0x34 , 0x37);
 		snd_soc_write(codec,0x35 , 0x86);
 		snd_soc_write(codec,0x36 , 0xc2);
