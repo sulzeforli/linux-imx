@@ -489,6 +489,8 @@ static void disable_anatop_clocks(void __iomem *anatop_base)
 static void __init imx6q_clocks_init(struct device_node *ccm_node)
 {
 	struct device_node *np;
+	struct device_node *fec_node;
+	const char *phymode;
 	void __iomem *anatop_base, *base;
 	int i;
 	u32 val;
@@ -1048,8 +1050,32 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
 		imx_clk_prepare_enable(clk[IMX6QDL_CLK_USBPHY2_GATE]);
 	}
 
-	/*Set enet_ref clock to 125M to supply for RGMII tx_clk */
+	/*Set enet_ref clock to 125M to supply for RGMII tx_clk by default*/
 	clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], 125000000);
+/*	imx_clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], 125000000);
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx6q-fec");
+
+	if (np) {
+	               u32 clock_frequency;
+	               int ret;
+	               ret = of_property_read_u32(np, "ref-clock",
+	&clock_frequency);
+	               if (ret == 0) {
+	                       printk("ref-clock: %d\n", clock_frequency);
+	                       imx_clk_set_rate(clk[IMX6QDL_CLK_ENET_REF],
+	clock_frequency);
+	               }
+	       }
+	       // This clock may be needed very early on
+	       imx_clk_prepare_enable(clk[IMX6QDL_CLK_ENET_REF]);*/
+
+	/*Check for RMII, in which case adjust ref clock to 50M */
+		fec_node = of_find_compatible_node(NULL, NULL, "fsl,imx6q-fec");
+		if (fec_node && !of_property_read_string(fec_node, "phy-mode", &phymode))
+			if (!strcmp(phymode, "rmii"))
+				clk_set_rate(clk[IMX6QDL_CLK_ENET_REF], 50000000);
+
 
 #ifdef CONFIG_MX6_VPU_352M
 	/*

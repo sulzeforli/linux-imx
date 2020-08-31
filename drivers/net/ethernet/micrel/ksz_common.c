@@ -1,7 +1,7 @@
 /**
- * Micrel Ethernet driver common code
+ * Microchip Ethernet driver common code
  *
- * Copyright (c) 2015 Microchip Technology Inc.
+ * Copyright (c) 2015-2020 Microchip Technology Inc.
  *	Tristram Ha <Tristram.Ha@microchip.com>
  *
  * Copyright (c) 2009-2011 Micrel, Inc.
@@ -53,9 +53,7 @@ static void ksz_init_timer(struct ksz_timer_info *info, int period,
 {
 	info->max = 0;
 	info->period = period;
-	init_timer(&info->timer);
-	info->timer.function = function;
-	info->timer.data = (unsigned long) data;
+	setup_timer(&info->timer, function, (unsigned long) data);
 }  /* ksz_init_timer */
 
 static void ksz_update_timer(struct ksz_timer_info *info)
@@ -72,6 +70,117 @@ static void ksz_update_timer(struct ksz_timer_info *info)
 		add_timer(&info->timer);
 	}
 }  /* ksz_update_timer */
+
+/* -------------------------------------------------------------------------- */
+
+#ifndef NO_FILE_DEV
+static void file_gen_dev_release(struct file_dev_info *info,
+	struct file_dev_info **n)
+{
+	struct file_dev_info *prev = *n;
+
+	if (prev == info) {
+		*n = info->next;
+	} else {
+		while (prev && prev->next != info)
+			prev = prev->next;
+		if (prev)
+		prev->next = info->next;
+	}
+	kfree(info->read_buf);
+	kfree(info->write_buf);
+	kfree(info);
+}  /* file_gen_dev_release */
+
+static void file_dev_setup_msg(struct file_dev_info *info, void *data, int len,
+	void (*func)(void *data, void *param), void *param)
+{
+	u8 *buf = info->read_in;
+	int in_intr = in_interrupt();
+
+	if (!buf)
+		return;
+	if (len > info->read_tmp)
+		len = info->read_tmp;
+	if (!in_intr)
+		mutex_lock(&info->lock);
+	memcpy(buf, data, len);
+	if (func)
+		func(buf, param);
+	len += 2;
+	if (info->read_len + len <= info->read_max) {
+		u16 *msg_len = (u16 *) &info->read_buf[info->read_len];
+
+		*msg_len = len;
+		msg_len++;
+		memcpy(msg_len, buf, len - 2);
+		info->read_len += len;
+	}
+	if (!in_intr)
+		mutex_unlock(&info->lock);
+	wake_up_interruptible(&info->wait_msg);
+}  /* file_dev_setup_msg */
+
+static void file_dev_clear_notify(struct file_dev_info *list,
+	struct file_dev_info *info, u16 mod, uint *notifications)
+{
+	struct file_dev_info *dev_info;
+	uint notify = 0;
+
+	if (!info->notifications)
+		return;
+	dev_info = list;
+	while (dev_info) {
+		if (dev_info != info)
+			notify |= dev_info->notifications[mod];
+		dev_info = dev_info->next;
+	}
+	*notifications = notify;
+	info->notifications[mod] = 0;
+}  /* file_dev_clear_notify */
+#endif
+
+/* -------------------------------------------------------------------------- */
+
+static inline s64 div_s64_s32_rem(s64 val, u32 divisor, s32 *rem)
+{
+	val = div_s64_rem(val, divisor, rem);
+	return val;
+}
+
+static inline u64 div_u64_u32_rem(u64 val, u32 divisor, u32 *rem)
+{
+	val = div_u64_rem(val, divisor, rem);
+	return val;
+}
+
+static inline s64 div_s64_u32(u64 val, u32 divisor)
+{
+	s32 rem;
+
+	val = div_s64_rem(val, divisor, &rem);
+	return val;
+}
+
+static inline u64 div_u64_u32(u64 val, u32 divisor)
+{
+	u32 rem;
+
+	val = div_u64_rem(val, divisor, &rem);
+	return val;
+}
+
+static inline u64 div_s64_s64(s64 val, s64 divisor)
+{
+	val = div64_s64(val, divisor);
+	return val;
+}
+
+static inline u64 div_u64_u64(u64 val, u64 divisor)
+{
+	val = div64_u64(val, divisor);
+	return val;
+}
 
 /* -------------------------------------------------------------------------- */
 
@@ -146,6 +255,7 @@ static void dbg_print_work(struct work_struct *work)
 		printk(KERN_INFO "---\n");
 		print_buf(db.int_buf, &db.int_msg, &db.int_cnt,
 			&db.last_int_line);
+		printk(KERN_INFO "+++\n");
 	}
 }  /* dbg_print_work */
 
@@ -159,6 +269,8 @@ static void dbg_monitor(unsigned long ptr)
 
 static int init_dbg(void)
 {
+	if (db.dbg_buf)
+		return 0;
 	db.dbg_buf = kmalloc(DEBUG_MSG_SIZE, GFP_KERNEL);
 	if (!db.dbg_buf)
 		return -ENOMEM;
@@ -274,25 +386,112 @@ static inline void dbp_pkt(struct sk_buff *skb, char first, char *msg, int hdr)
 	}
 }  /* dbp_pkt */
 
-static int get_num_val(const char *buf)
+/* -------------------------------------------------------------------------- */
+
+/**
+ * delay_micro - delay in microsecond
+ * @microsec:	Number of microseconds to delay.
+ *
+ * This routine delays in microseconds.
+ */
+static inline void delay_micro(uint microsec)
 {
-	int num = -1;
+	uint millisec = microsec / 1000;
 
-	if ('0' == buf[0] && 'x' == buf[1])
-		sscanf(&buf[2], "%x", (unsigned int *) &num);
-	else if ('0' == buf[0] && 'b' == buf[1]) {
-		int i = 2;
+	microsec %= 1000;
+	if (millisec)
+		mdelay(millisec);
+	if (microsec)
+		udelay(microsec);
+}
 
-		num = 0;
-		while (buf[i]) {
-			num <<= 1;
-			num |= buf[i] - '0';
-			i++;
+/**
+ * delay_milli - delay in millisecond
+ * @millisec:	Number of milliseconds to delay.
+ *
+ * This routine delays in milliseconds.
+ */
+static inline void delay_milli(uint millisec)
+{
+	unsigned long ticks = millisec * HZ / 1000;
+
+	if (!ticks || in_interrupt())
+		mdelay(millisec);
+	else {
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(ticks);
+	}
+}
+
+/* -------------------------------------------------------------------------- */
+
+#ifndef DO_NOT_USE_COPY_SKB
+static inline void copy_old_skb(struct sk_buff *old, struct sk_buff *skb)
+{
+	if (old->ip_summed) {
+		int offset = old->head - old->data;
+
+		skb->head = skb->data + offset;
+	}
+	skb->dev = old->dev;
+	skb->sk = old->sk;
+	skb->protocol = old->protocol;
+	skb->ip_summed = old->ip_summed;
+	skb->csum = old->csum;
+	skb_shinfo(skb)->tx_flags = skb_shinfo(old)->tx_flags;
+	skb_set_network_header(skb, ETH_HLEN);
+
+	dev_kfree_skb(old);
+}  /* copy_old_skb */
+#endif
+
+/* -------------------------------------------------------------------------- */
+
+#ifdef USE_SHOW_HELP
+enum {
+	SHOW_HELP_NONE,
+	SHOW_HELP_ON_OFF,
+	SHOW_HELP_NUM,
+	SHOW_HELP_HEX,
+	SHOW_HELP_HEX_2,
+	SHOW_HELP_HEX_4,
+	SHOW_HELP_HEX_8,
+	SHOW_HELP_SPECIAL,
+};
+
+static char *help_formats[] = {
+	"",
+	"%d%s\n",
+	"%u%s\n",
+	"0x%x%s\n",
+	"0x%02x%s\n",
+	"0x%04x%s\n",
+	"0x%08x%s\n",
+	"%d%s\n",
+};
+
+static char *display_strs[] = {
+	" (off)",
+	" (on)",
+};
+
+static char *show_on_off(uint on)
+{
+	if (on <= 1)
+		return display_strs[on];
+	return NULL;
+}  /* show_on_off */
+
+static ssize_t sysfs_show(ssize_t len, char *buf, int type, int chk, char *ptr,
+	int verbose)
+{
+	if (type) {
+		if (verbose) {
+			if (SHOW_HELP_ON_OFF == type)
+				ptr = show_on_off(chk);
 		}
-	} else if ('0' == buf[0] && 'd' == buf[1])
-		sscanf(&buf[2], "%u", &num);
-	else
-		sscanf(buf, "%d", &num);
-	return num;
-}  /* get_num_val */
-
+		len += sprintf(buf + len, help_formats[type], chk, ptr);
+	}
+	return len;
+}  /* sysfs_show */
+#endif

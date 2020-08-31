@@ -1,7 +1,7 @@
 /**
- * Micrel SPI switch common header
+ * Microchip SPI switch common header
  *
- * Copyright (c) 2015 Microchip Technology Inc.
+ * Copyright (c) 2015-2019 Microchip Technology Inc.
  *	Tristram Ha <Tristram.Ha@microchip.com>
  *
  * Copyright (c) 2012-2015 Micrel, Inc.
@@ -61,6 +61,13 @@ struct spi_hw_priv {
 };
 #endif
 
+struct smi_hw_priv {
+	struct mii_bus *bus;
+	int phyid;
+	int (*read)(struct mii_bus *bus, int phy_id, int regnum);
+	int (*write)(struct mii_bus *bus, int phy_id, int regnum, u16 val);
+};
+
 /**
  * struct sw_priv - Switch device private data structure
  * @hw_dev:		Pointer to hardware access device structure.
@@ -77,17 +84,19 @@ struct spi_hw_priv {
  * @mib_timer_info:	Timer information for reading MIB counters.
  * @monitor_timer_info:	Timer information for monitoring.
  * @counter:		MIB counter data.
+ * @ports:		Virtual switch ports.
  * @debug_root:
  * @debug_file:
- * @phy_id:
- * @intr_working:
+ * @irq_gpio:		GPIO pin used for interrupt.
+ * @gpio_val:		GPIO value during interrupt.
+ * @phy_id:		Point to active PHY.
+ * @intr_working:	Working interrupt indications.
  * @intr_mask:
- * @pdev:
- * @bus:
+ * @pdev:		Point to platform device.
+ * @bus:		Point to MDIO bus.
  * @bus_irqs:
  * @name:
- * @phydev:
- * @phypriv:
+ * @phydev:		Point to active PHY device.
  * @sw:			Virtual switch structure.
  */
 struct sw_priv {
@@ -105,17 +114,20 @@ struct sw_priv {
 	struct mutex hwlock;
 	struct mutex lock;
 
+	struct work_struct irq_work;
 	struct delayed_work link_read;
 	struct work_struct mib_read;
 	struct delayed_work stp_monitor;
 	struct ksz_timer_info mib_timer_info;
 	struct ksz_timer_info monitor_timer_info;
 	struct ksz_counter_info counter[TOTAL_PORT_NUM];
+	struct ksz_port ports[TOTAL_PORT_NUM + 1];
 
 	struct dentry *debug_root;
 	struct dentry *debug_file;
 
-	int phy_id;
+	int irq_gpio;
+	int gpio_val;
 	int intr_working;
 	uint intr_mask;
 
@@ -124,7 +136,6 @@ struct sw_priv {
 	int bus_irqs[PHY_MAX_ADDR];
 	char name[40];
 	struct phy_device *phydev;
-	struct phy_priv *phypriv;
 
 	/* Switch structure size can be variable. */
 	struct ksz_sw sw;
@@ -156,6 +167,7 @@ struct dev_priv {
 	struct ksz_timer_info monitor_timer_info;
 	struct net_device_stats stats;
 
+	struct phy_device dummy_phy;
 	struct phy_device *phydev;
 	struct work_struct phy_pause;
 
@@ -177,45 +189,4 @@ struct dev_priv {
 #endif
 };
 
-#ifndef SKIP_MICREL_SWITCH_SYSFS
-static void get_private_data(struct device *d, struct semaphore **proc_sem,
-	struct ksz_sw **sw, struct ksz_port **port)
-{
-	struct net_device *dev;
-	struct dev_priv *priv;
-	struct sw_priv *hw_priv;
-
-	if (d->bus && (
-#if defined(__LINUX_SPI_H)
-	    d->bus == &spi_bus_type
 #endif
-#if defined(__LINUX_SPI_H) && defined(_LINUX_I2C_H)
-	    ||
-#endif
-#if defined(_LINUX_I2C_H)
-	    d->bus == &i2c_bus_type
-#endif
-#if !defined(__LINUX_SPI_H) && !defined(_LINUX_I2C_H)
-	    d->bus
-#endif
-	    )) {
-		hw_priv = dev_get_drvdata(d);
-		if (port && hw_priv->phydev) {
-			struct phy_priv *phydata;
-
-			phydata = hw_priv->phydev->priv;
-			*port = &phydata->port;
-		}
-	} else {
-		dev = to_net_dev(d);
-		priv = netdev_priv(dev);
-		hw_priv = priv->parent;
-		if (port)
-			*port = &priv->port;
-	}
-	*proc_sem = &hw_priv->proc_sem;
-	*sw = &hw_priv->sw;
-}
-#endif
-#endif
-

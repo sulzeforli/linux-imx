@@ -40,6 +40,7 @@
 #include "common.h"
 #include "cpuidle.h"
 #include "hardware.h"
+#include <linux/micrel_phy.h>
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -180,59 +181,11 @@ static int ar8035_phy_fixup(struct phy_device *dev)
 
 #define PHY_ID_AR8035 0x004dd072
 
-static int ksz8081rn_phy_fixup (struct phy_device *dev)
+static int ksz8081rn_phy_fixup(struct phy_device *dev)
 {
-dev->dev_flags |= MICREL_PHY_50MHZ_CLK;
+	dev->dev_flags |= MICREL_PHY_50MHZ_CLK;
+    return 0;
 }
-
-#if defined(CONFIG_HAVE_SPI_KSZ8863)
-static struct spi_board_info ksz8863_info[] __initdata = {
-	[0] = {
-		.modalias	= "ksz8863",
-
-		/* Please adjust the maximum SPI clock speed as necessary. */
-		.max_speed_hz	= 48000000,
-		.bus_num	= 0,
-#if defined(CONFIG_SPI_PEGASUS) || defined(CONFIG_SPI_PEGASUS_MODULE)
-		.chip_select	= 2,
-#else
-		.chip_select	= 0,
-#endif
-		.mode		= SPI_MODE_3,
-
-		/* Please provide a system interrupt number. */
-		.irq		= -1,
-#if defined(CONFIG_SPI_PEGASUS) || defined(CONFIG_SPI_PEGASUS_MODULE)
-		.controller_data = &spi_ks8692_chip,
-#endif
-	},
-	[1] = {
-		.modalias	= "ksz8863",
-
-		/* Please adjust the maximum SPI clock speed as necessary. */
-		.max_speed_hz	= 48000000,
-		.bus_num	= 0,
-		.chip_select	= 1,
-		.mode		= SPI_MODE_3,
-
-		/* Please provide a system interrupt number. */
-		.irq		= -1,
-#if defined(CONFIG_SPI_PEGASUS) || defined(CONFIG_SPI_PEGASUS_MODULE)
-		.controller_data = &spi_ks8692_chip,
-#endif
-	},
-};
-
-static int __init ksz8863_spi_init(void)
-{
-#if defined(CONFIG_SPI_PEGASUS) || defined(CONFIG_SPI_PEGASUS_MODULE)
-	spi_gpio_request();
-#endif
-	spi_register_board_info(ksz8863_info, ARRAY_SIZE(ksz8863_info));
-	return 0;
-}
-arch_initcall(ksz8863_spi_init);
-#endif
 
 static void __init imx6q_enet_phy_init(void)
 {
@@ -245,8 +198,8 @@ static void __init imx6q_enet_phy_init(void)
 				ar8031_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8035, 0xffffffef,
 				ar8035_phy_fixup);
-		phy_register_fixup_for_uid( PHY_ID_KSZ8081 , MICREL_PHY_ID_MASK,
-		ksz8081rn_phy_fixup );
+		phy_register_fixup_for_uid(PHY_ID_KSZ8081, 0xffffffef,
+						ksz8081rn_phy_fixup);
 	}
 }
 
@@ -277,7 +230,8 @@ static void __init imx6q_1588_init(void)
 	if (!IS_ERR(gpr))
 		regmap_update_bits(gpr, IOMUXC_GPR1,
 				IMX6Q_GPR1_ENET_CLK_SEL_MASK,
-				IMX6Q_GPR1_ENET_CLK_SEL_ANATOP);
+				IMX6Q_GPR1_ENET_CLK_SEL_PAD);
+//				IMX6Q_GPR1_ENET_CLK_SEL_ANATOP);/*Changed to the pad-external*/
 	else
 		pr_err("failed to find fsl,imx6q-iomuxc-gpr regmap\n");
 
