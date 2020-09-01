@@ -105,7 +105,7 @@
 		compatible = "fsl,mxc_sdc_fb";
 		disp_dev = "hdmi";
 		interface_pix_fmt = "RGB24";
-		mode_str ="1024x768M@60";
+		mode_str ="1680x1050M@60";
 		default_bpp = <32>;
 		int_clk = <0>;
 		late_init = <0>;
@@ -706,8 +706,8 @@
 /* "native-mode" seems not to work, it chooses always the first entry
 			native-mode = <&timing_xga>; */
 		display-timings {
-			native-mode = <&timing_wxga>;
-#if 0
+			native-mode = <&timing_hd>;
+
 			timing_vga: 640x480 {
          	       clock-frequency = <25175000>;
  	               hactive = <640>;
@@ -724,7 +724,7 @@
   	              vsync-active = <0>;
   	              pixelclk-active = <0>;
 			};
-#endif
+
 			/* Standard XGA timing */
 			timing_xga: 1024x768 {
 				clock-frequency = <65000000>;
@@ -754,6 +754,21 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
+
+			timing_hd: 1680x1050 {
+				clock-frequency = <147140000>;
+				hactive = <1680>;
+				vactive = <1050>;
+				hback-porch = <288>;
+				hfront-porch = <104>;
+				vback-porch = <33>;
+				vfront-porch = <1>;
+				hsync-len = <184>;
+				vsync-len = <3>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				pixelclk-active = <0>;
+			};
 			timing_fullhd: 1920x1080 {
 				clock-frequency = <128500000>;
 				hactive = <1920>;
@@ -779,9 +794,9 @@
 		status = "okay";
 //		primary;
 		display-timings {
-//			native-mode = <&timing_xga>;
-#if 0
-			timing1: hsd100pxn1 {
+			native-mode = <&timing_1>;
+
+			timing_1: hsd100pxn1 {
 				clock-frequency = <128500000>;
 				hactive = <1920>;
 				vactive = <1080>;
@@ -792,7 +807,7 @@
 				hsync-len = <60>;
 				vsync-len = <10>;
 			};
-#endif
+
 			
 		};
 	};
