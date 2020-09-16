@@ -91,7 +91,7 @@
 		hdmi-controller = <&hdmi_audio>;
 		/*status = "okay";*/
 	};
-
+	
 	mxcfb1: fb@0 {
 		compatible = "fsl,mxc_sdc_fb";
 		disp_dev = "ldb";
@@ -101,17 +101,16 @@
 		late_init = <0>;
 		status = "disabled";
 	};
-    mxcfb2: fb@1 {
+	mxcfb2: fb@1 {
 		compatible = "fsl,mxc_sdc_fb";
 		disp_dev = "hdmi";
 		interface_pix_fmt = "RGB24";
-		mode_str ="1680x1050M@60";
+		mode_str ="1920x1080M@60";
 		default_bpp = <32>;
 		int_clk = <0>;
 		late_init = <0>;
 		status = "disabled";		
 	};
-
 	mxcfb3: fb@2 {
 		compatible = "fsl,mxc_sdc_fb";
 		disp_dev = "lcd";
@@ -319,7 +318,7 @@
 };
 
 &hdmi_audio {
-	status = "okay";
+	status = "disabled";
 };
 
 &hdmi_cec {
@@ -699,15 +698,15 @@
 
 	lvds-channel@0 {
 		reg = <0>;
-		fsl,data-mapping = "spwg"; /* "jeida"*/
+		fsl,data-mapping = "spwg"; /*"spwg" "jeida"*/
 		fsl,data-width = <24>;
 		primary;
 		status = "okay";
 /* "native-mode" seems not to work, it chooses always the first entry
 			native-mode = <&timing_xga>; */
 		display-timings {
-			native-mode = <&timing_hd>;
-
+			native-mode = <&timing_fullhd>;
+#if 0
 			timing_vga: 640x480 {
          	       clock-frequency = <25175000>;
  	               hactive = <640>;
@@ -769,8 +768,9 @@
 				vsync-active = <0>;
 				pixelclk-active = <0>;
 			};
+#endif
 			timing_fullhd: 1920x1080 {
-				clock-frequency = <128500000>;
+				clock-frequency = <148500000>;
 				hactive = <1920>;
 				vactive = <1080>;
 				hback-porch = <220>;
@@ -797,7 +797,7 @@
 			native-mode = <&timing_1>;
 
 			timing_1: hsd100pxn1 {
-				clock-frequency = <128500000>;
+				clock-frequency = <148500000>;
 				hactive = <1920>;
 				vactive = <1080>;
 				hback-porch = <220>;
