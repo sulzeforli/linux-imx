@@ -32,6 +32,7 @@
 #include "common.h"
 #include "cpuidle.h"
 #include "hardware.h"
+#include <linux/micrel_phy.h>
 
 /* For imx6q sabrelite board: set KSZ9021RN RGMII pad skew */
 static int ksz9021rn_phy_fixup(struct phy_device *phydev)
@@ -172,6 +173,12 @@ static int ar8035_phy_fixup(struct phy_device *dev)
 
 #define PHY_ID_AR8035 0x004dd072
 
+static int ksz8081rn_phy_fixup(struct phy_device *dev)
+{
+	dev->dev_flags |= MICREL_PHY_50MHZ_CLK;
+    return 0;
+}
+
 static void __init imx6q_enet_phy_init(void)
 {
 	if (IS_BUILTIN(CONFIG_PHYLIB)) {
@@ -183,6 +190,8 @@ static void __init imx6q_enet_phy_init(void)
 				ar8031_phy_fixup);
 		phy_register_fixup_for_uid(PHY_ID_AR8035, 0xffffffef,
 				ar8035_phy_fixup);
+		phy_register_fixup_for_uid(PHY_ID_KSZ8081, 0xffffffef,
+						ksz8081rn_phy_fixup);
 	}
 }
 
