@@ -62,7 +62,7 @@
 		compatible ="fsl,imx6q-sabresd-wm8960", 
 					"fsl,imx-audio-wm8960";
 		model = "wm8960-audio";
-		cpu-dai = <&ssi2>;
+		audio-cpu = <&ssi2>;
 		audio-codec = <&codec>;
 		codec-master;
 		asrc-controller = <&asrc>;
@@ -871,14 +871,14 @@
 };
 
 &ssi2 {
-	fsl,mode = "i2s-slave";
-/*	assigned-clocks = <&clks IMX6QDL_CLK_PLL4>,
+	/*fsl,mode = "i2s-slave";*/
+	assigned-clocks = <&clks IMX6QDL_CLK_PLL4>,
 			  <&clks IMX6QDL_PLL4_BYPASS>,
 			  <&clks IMX6QDL_CLK_SSI2_SEL>;
 	assigned-clock-parents = <&clks IMX6QDL_CLK_OSC>,
 				 <&clks IMX6QDL_CLK_PLL4>,
 				 <&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>;
-	assigned-clock-rates = <1179648000>, <0>, <0>;*/
+	assigned-clock-rates = <737280000>, <0>, <0>;
 	status = "okay";
 };
 

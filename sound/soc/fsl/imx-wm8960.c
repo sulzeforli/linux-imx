@@ -549,17 +549,21 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 //	struct snd_soc_codec *codec = codec_dai->component;
 	struct imx_priv *priv = &card_priv;
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
-//	struct device *dev = &priv->pdev->dev;
-	int ret=0;
+	struct device *dev = &priv->pdev->dev;
+	int ret;
 
 	data->clk_frequency = clk_get_rate(data->codec_clk);
 	rtd = snd_soc_get_pcm_runtime(card, card->dai_link[0].name);
 	codec_dai = rtd->codec_dai;
 //	snd_soc_component_update_bits(codec, WM8960_IFACE2, 1<<6, 1<<6);
-
+	ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_MCLK,
+				data->clk_frequency, SND_SOC_CLOCK_IN);
+		if (ret < 0)
+			dev_err(dev, "failed to set sysclk in %s\n", __func__);
 	/*
 	 * set SAI2_MCLK_DIR to enable codec MCLK
 	 */
+#if 0
 	if (data->gpr)
 		regmap_update_bits(data->gpr, 4, 1<<20, 1<<20);
 
@@ -586,7 +590,7 @@ static int imx_wm8960_late_probe(struct snd_soc_card *card)
 	 * route left channel to right channel in default.
 	 */
 	snd_soc_component_update_bits(priv->component, WM8960_ADDCTL1, 3<<2, 1<<2);
-#if 0
+
 	    snd_soc_write(codec,0x0 ,0x13f);
 	    snd_soc_write(codec,0x1 , 0x13f);
 		snd_soc_write(codec,0x2 , 0x379);
