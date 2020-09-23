@@ -272,17 +272,16 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = &priv->pdev->dev;
 	struct snd_soc_card *card = platform_get_drvdata(priv->pdev);
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
-//	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
-//	struct device *dev = card->dev;
+	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
 	unsigned int sample_rate = params_rate(params);
-	snd_pcm_format_t sample_format = params_format(params);
-	unsigned int sysclk, pll_out;
-	int ret = 0;
-	int bclk = snd_soc_params_to_bclk(params);
-	unsigned int fmt;
 
-	if (params_channels(params) == 1)
-		bclk *= 2;
+	unsigned int fmt,sysclk, pll_out;
+	int ret = 0;
+
+
+
+//	if (params_channels(params) == 1)
+//		bclk *= 2;
 
 /*	data->is_stream_in_use[tx] = true;
 
@@ -302,24 +301,21 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 
 	if (data->is_codec_master)
 	{
-		//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 		fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBM_CFM;
 	}
 	else
 	{
-		//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 		fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 			SND_SOC_DAIFMT_CBS_CFS;
 	}
 
 	/* set cpu DAI configuration */
-	ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
-	if (ret) {
-		dev_err(dev, "failed to set cpu dai fmt: %d\n", ret);
-		//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-		return ret;
-	}
+		ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
+		if (ret) {
+			dev_err(dev, "failed to set cpu dai fmt: %d\n", ret);
+			return ret;
+		}
 
 	/* set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, fmt);
@@ -340,16 +336,16 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, 0, SND_SOC_CLOCK_OUT);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+ 		    printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 			return ret;
 		}
 		return 0;
 								}
 	else {
-		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, 0, SND_SOC_CLOCK_IN);
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, 0, SND_SOC_CLOCK_IN);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 			return ret;
 		}
 	      	  	  	  	  	  	}
@@ -359,70 +355,26 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 	/* Use MCLK to provide sysclk directly*/
 	sysclk = data->clk_frequency;
 
-	if (sample_format == SNDRV_PCM_FORMAT_S24_LE)
+	if (params_width(params) == 24)
 			pll_out = sample_rate * 768;
 		else
 			pll_out = sample_rate * 512;
-#if 0
-	for (i = 0; i < ARRAY_SIZE(sysclk_divs); ++i) {
-		if (sysclk_divs[i] == -1)
-			continue;
-		sysclk /= sysclk_divs[i];
-		for (j = 0; j < ARRAY_SIZE(dac_divs); ++j) {
-			if (sysclk == sample_rate * dac_divs[j]) {
-				for (k = 0; k < ARRAY_SIZE(bclk_divs); ++k)
-					if (sysclk == bclk * bclk_divs[k] / 10) {
-						snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_MCLK, sysclk, 0);
-						snd_soc_dai_set_clkdiv(codec_dai, WM8960_SYSCLKDIV, i << 1);
-						return 0;
-					}
-			}
-		}
-	}
-#endif
-#if 0
-	/* Use PLL to provide sysclk */
-	for (i = 0; i < ARRAY_SIZE(sysclk_divs); ++i) {
-		if (sysclk_divs[i] == -1)
-			continue;
-		for (j = 0; j < ARRAY_SIZE(dac_divs); ++j) {
-			sysclk = sample_rate * dac_divs[j];
-			pll_out = sysclk * sysclk_divs[i];
 
-			for (k = 0; k < ARRAY_SIZE(bclk_divs); ++k) {
-				if (sysclk == bclk * bclk_divs[k] / 10) {
-					/* Set codec pll */
-					ret = snd_soc_dai_set_pll(codec_dai, 0, 0, data->clk_frequency, pll_out);
-					if (ret != 0)
-						continue;
-					/* Set codec sysclk */
-					snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_PLL, sysclk, 0);
-					snd_soc_dai_set_clkdiv(codec_dai, WM8960_SYSCLKDIV, i << 1);
-					return 0;
-				}
-			}
-		}
-	}
-
-	//dev_err(dev, "failed to configure system clock");
-
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-#endif
-	    ret = snd_soc_dai_set_pll(codec_dai, WM8960_SYSCLK_AUTO, 0,data->clk_frequency, pll_out);
+		ret = snd_soc_dai_set_pll(codec_dai, WM8960_SYSCLK_AUTO, 0,data->clk_frequency, pll_out);
 		if (ret) {
 			dev_err(dev, "failed to start PLL: %d\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 			return ret;
 		}
 
 		ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_AUTO, pll_out, 0);
 		if (ret) {
 			dev_err(dev, "failed to set SYSCLK: %d\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
 			return ret;
 		}
-//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-	return 0;
+	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+	return ret;
 }
 
 static int imx_hifi_hw_free(struct snd_pcm_substream *substream)
