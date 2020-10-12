@@ -39,6 +39,7 @@ struct imx_wm8960_data {
 	unsigned int clk_frequency;
 	bool is_codec_master;
 	bool is_stream_in_use[2];
+	bool is_stream_opened[2];
 	struct regmap *gpr;
 	unsigned int hp_det[2];
 };
@@ -108,7 +109,7 @@ static int hp_set_status_check(void *data)
 		snd_soc_dapm_enable_pin(snd_soc_component_get_dapm(priv->component), "Ext Spk");
 		snd_soc_dapm_enable_pin(snd_soc_component_get_dapm(priv->component), "Main MIC");
 		ret = 0;
-		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		/*
 		 *  As the Main MIC only connect the input for right channel,
 		 *  we need to route it for left channel.
@@ -127,6 +128,7 @@ static int hp_set_status_check(void *data)
 	return ret;
 }
 
+
 static const struct snd_soc_dapm_widget imx_wm8960_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headset Jack", NULL),
 	SND_SOC_DAPM_SPK("Ext Spk", NULL),
@@ -143,7 +145,7 @@ static int imx_wm8960_gpio_init(struct snd_soc_card *card)
 	struct imx_priv *priv = &card_priv;
 //	int ret;
 	priv->component = codec_dai->component;
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	/*if (gpio_is_valid(priv->hp_set_gpio)) {
 		imx_hp_set_gpio.gpio = priv->hp_set_gpio;
 		imx_hp_set_gpio.jack_status_check = hp_set_status_check;
@@ -162,7 +164,7 @@ static int imx_wm8960_gpio_init(struct snd_soc_card *card)
 		if (ret)
 			return ret;
 	}*/
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	return 0;
 }
 
@@ -173,7 +175,7 @@ static ssize_t headphone_show(struct device_driver *dev, char *buf)
 
 	if (!gpio_is_valid(priv->hp_set_gpio)) {
 		strcpy(buf, "no detect gpio connected\n");
-		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		return strlen(buf);
 	}
 
@@ -184,7 +186,7 @@ static ssize_t headphone_show(struct device_driver *dev, char *buf)
 		strcpy(buf, "Headphone\n");
 	else
 		strcpy(buf, "Speaker\n");
-	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	return strlen(buf);
 }
 
@@ -272,7 +274,7 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = &priv->pdev->dev;
 	struct snd_soc_card *card = platform_get_drvdata(priv->pdev);
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
-	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+//	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
 	unsigned int sample_rate = params_rate(params);
 
 	unsigned int fmt,sysclk, pll_out;
@@ -291,10 +293,10 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 */
 	if (!priv->first_stream) {
 			priv->first_stream = substream;
-			//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		} else {
 			priv->second_stream = substream;
-			//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			/* We suppose the two substream are using same params */
 			return 0;
 		}
@@ -321,7 +323,7 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 	ret = snd_soc_dai_set_fmt(codec_dai, fmt);
 	if (ret) {
 		dev_err(dev, "failed to set codec dai fmt: %d\n", ret);
-		//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		return ret;
 	}
 
@@ -329,14 +331,14 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 		ret = snd_soc_dai_set_tdm_slot(cpu_dai, 0, 0, 2, params_width(params));
 		if (ret) {
 			dev_err(dev, "failed to set cpu dai tdm slot: %d\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
 
-		ret = snd_soc_dai_set_sysclk(cpu_dai, 0, 0, SND_SOC_CLOCK_OUT);
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, 0, SND_SOC_CLOCK_OUT);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
- 		    printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
 		return 0;
@@ -345,13 +347,13 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 		ret = snd_soc_dai_set_sysclk(codec_dai, 0, 0, SND_SOC_CLOCK_IN);
 		if (ret) {
 			dev_err(dev, "failed to set cpu sysclk: %d\n", ret);
-			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
 	      	  	  	  	  	  	}
 
 	data->clk_frequency = clk_get_rate(data->codec_clk);
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	/* Use MCLK to provide sysclk directly*/
 	sysclk = data->clk_frequency;
 
@@ -363,17 +365,17 @@ static int imx_hifi_hw_params(struct snd_pcm_substream *substream,
 		ret = snd_soc_dai_set_pll(codec_dai, WM8960_SYSCLK_AUTO, 0,data->clk_frequency, pll_out);
 		if (ret) {
 			dev_err(dev, "failed to start PLL: %d\n", ret);
-			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
 
 		ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_AUTO, pll_out, 0);
 		if (ret) {
 			dev_err(dev, "failed to set SYSCLK: %d\n", ret);
-			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
-	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	return ret;
 }
 
@@ -387,37 +389,15 @@ static int imx_hifi_hw_free(struct snd_pcm_substream *substream)
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
 	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
 //	struct device *dev = card->dev;
-//	int ret;
-
-
+	int ret;
 	data->is_stream_in_use[tx] = false;
 
-
-	/* Power down PLL to save power*/
-	if (data->is_codec_master && !data->is_stream_in_use[!tx]) {
-		//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-		snd_soc_dai_set_pll(codec_dai, 0, 0, 0, 0);
-		snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF);
-	}
-
-	/* We don't need to handle anything if there's no substream running */
-		if (!priv->first_stream)
-			return 0;
-
-		if (priv->first_stream == substream)
-			priv->first_stream = priv->second_stream;
-		priv->second_stream = NULL;
-
-		if (!priv->first_stream) {
-			/*
-			 * Continuously setting FLL would cause playback distortion.
-			 * We can fix it just by mute codec after playback.
-			 */
-			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				snd_soc_dai_digital_mute(codec_dai, 1, substream->stream);
-		//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+		if (data->is_codec_master && !data->is_stream_in_use[!tx]) {
+			ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF);
+			if (ret)
+				dev_warn(dev, "failed to set codec dai fmt: %d\n", ret);
 		}
-//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	return 0;
 }
 
@@ -429,7 +409,7 @@ static struct snd_pcm_hw_constraint_list imx_wm8960_rate_constraints = {
 
 static int imx_hifi_startup(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+//	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 //	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 //	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct imx_priv *priv = &card_priv;
@@ -451,22 +431,23 @@ static int imx_hifi_startup(struct snd_pcm_substream *substream)
 	if (!data->is_codec_master) {
 		ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
 				SNDRV_PCM_HW_PARAM_RATE, &imx_wm8960_rate_constraints);
-//		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		if (ret)
 		{
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			return ret;
 		}
 								}
 
 	ret = clk_prepare_enable(data->codec_clk);
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 	if (ret) {
 		dev_err(card->dev, "Failed to enable MCLK: %d\n", ret);
-	//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		return ret;
 	}
-//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
+		
 	return 0;
 }
 
@@ -478,13 +459,13 @@ static void imx_hifi_shutdown(struct snd_pcm_substream *substream)
 	//struct device *dev = &priv->pdev->dev;
 	struct snd_soc_card *card = rtd->card;//platform_get_drvdata(priv->pdev);
 	struct imx_wm8960_data *data = snd_soc_card_get_drvdata(card);
-//	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+	bool tx = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+		
+//	clk_disable_unprepare(data->codec_clk);
 
-	clk_disable_unprepare(data->codec_clk);
+	data->is_stream_opened[tx] = false;
 
-//	data->is_stream_opened[tx] = false;
-//	printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
-	return 0;
+//	return 0;
 }
 
 static struct snd_soc_ops imx_hifi_ops = {
@@ -789,7 +770,7 @@ audmux_bypass:
 	if (IS_ERR(data->codec_clk)) {
 		ret = PTR_ERR(data->codec_clk);
 		dev_err(&pdev->dev, "failed to get codec clk: %d\n", ret);
-//		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		goto fail;
 	}
 #if 1
@@ -883,13 +864,13 @@ audmux_bypass:
 			ret = snd_soc_of_parse_card_name(&data->card, "model");
 			if (ret)
 			{
-//				printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 				goto fail;
 			}
 			ret = snd_soc_of_parse_audio_routing(&data->card, "audio-routing");
 			if (ret)
 			{
-//				printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 				goto fail;
 			}
 //			data->card.owner = THIS_MODULE;
@@ -983,14 +964,14 @@ audmux_bypass:
 	ret = devm_snd_soc_register_card(&pdev->dev, &data->card);
 		if (ret) {
 			dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			goto fail;
 		}
 /*
 	ret = snd_soc_register_card(&data->card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
-		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		goto fail;
 	}
 */
@@ -1000,7 +981,7 @@ audmux_bypass:
 			(enum of_gpio_flags *)&priv->hp_active_low);
 	if (IS_ERR(ERR_PTR(priv->hp_set_gpio)))
 	{
-		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		goto fail;
 	}
 
@@ -1008,24 +989,24 @@ audmux_bypass:
 	ret = snd_ctl_add(data->card.snd_card, priv->headset_kctl);
 	if (ret)
 	{
-		printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 		goto fail;
 	}
 */
 	ret = imx_wm8960_gpio_init(&data->card);
-	//printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 
 	if (gpio_is_valid(priv->hp_set_gpio)) {
 		ret = driver_create_file(pdev->dev.driver, &driver_attr_headphone);
 		if (ret) {
 			dev_err(&pdev->dev, "create hp attr failed (%d)\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			goto fail;
 		}
 		ret = driver_create_file(pdev->dev.driver, &driver_attr_micphone);
 		if (ret) {
 			dev_err(&pdev->dev, "create mic attr failed (%d)\n", ret);
-//			printk(KERN_ERR "Yao-log: ---%s,%d!---\n", __FUNCTION__,__LINE__);
+
 			goto fail;
 		}
 	}
